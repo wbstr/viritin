@@ -1,197 +1,45 @@
+/*
+ * Copyright 2017 Matti Tahvonen.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.vaadin.viritin.form;
 
-import java.io.Serializable;
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-import javax.validation.groups.Default;
-
-import org.vaadin.viritin.BeanBinder;
-import org.vaadin.viritin.MBeanFieldGroup;
-import org.vaadin.viritin.MBeanFieldGroup.FieldGroupListener;
-import org.vaadin.viritin.button.DeleteButton;
-import org.vaadin.viritin.button.MButton;
-import org.vaadin.viritin.button.PrimaryButton;
-import org.vaadin.viritin.label.RichText;
-import org.vaadin.viritin.layouts.MHorizontalLayout;
-
-import com.vaadin.ui.AbstractComponent;
+import com.vaadin.data.BeanValidationBinder;
+import com.vaadin.data.Binder;
+import com.vaadin.data.StatusChangeEvent;
 import com.vaadin.ui.AbstractComponentContainer;
 import com.vaadin.ui.AbstractField;
 import com.vaadin.ui.AbstractTextField;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.CustomComponent;
-import com.vaadin.ui.Field;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.UI;
 import com.vaadin.ui.Window;
-import com.vaadin.ui.themes.ValoTheme;
-import com.vaadin.util.ReflectTools;
+import java.io.Serializable;
+import org.vaadin.viritin.button.DeleteButton;
+import org.vaadin.viritin.button.MButton;
+import org.vaadin.viritin.button.PrimaryButton;
+import org.vaadin.viritin.layouts.MHorizontalLayout;
 
 /**
- * Abstract super class for simple editor forms.
  *
- * See {@link #createContent()} for usage information.
- *
- *
- * @see <a href="https://github.com/viritin/viritin/wiki/AbstractForm">The
- * wiki</a>
- *
- * @param <T> the type of the bean edited
+ * @author mstahv
  */
-public abstract class AbstractForm<T> extends CustomComponent implements
-        FieldGroupListener<T> {
+public abstract class AbstractForm<T> extends CustomComponent {
 
-    private static final long serialVersionUID = -2368496151988753088L;
-    private String modalWindowTitle = "Edit entry";
-    private String saveCaption = "Save";
-    private String deleteCaption = "Delete";
-    private String cancelCaption = "Cancel";
-
-    public static class ValidityChangedEvent<T> extends Component.Event {
-
-        private static final long serialVersionUID = 7410354508832863756L;
-
-        private static final Method method = ReflectTools.findMethod(
-                ValidityChangedListener.class, "onValidityChanged",
-                ValidityChangedEvent.class);
-
-        public ValidityChangedEvent(Component source) {
-            super(source);
-        }
-
-        @Override
-        public AbstractForm<T> getComponent() {
-            return (AbstractForm<T>) super.getComponent();
-        }
-
-    }
-
-    public interface ValidityChangedListener<T> extends Serializable {
-
-        public void onValidityChanged(ValidityChangedEvent<T> event);
-    }
-
-    private Window popup;
-
-    public AbstractForm() {
-        addAttachListener(new AttachListener() {
-
-            private static final long serialVersionUID = 3193438171004932112L;
-
-            @Override
-            public void attach(AttachEvent event) {
-                lazyInit();
-                adjustResetButtonState();
-            }
-        });
-    }
-
-    protected void lazyInit() {
-        if (getCompositionRoot() == null) {
-            setCompositionRoot(createContent());
-            adjustSaveButtonState();
-            adjustResetButtonState();
-        }
-    }
-
-    private MBeanFieldGroup<T> fieldGroup;
-
-    /**
-     * The validity checked and cached on last change. Should be pretty much
-     * always up to date due to eager changes. At least after onFieldGroupChange
-     * call.
-     */
-    boolean isValid = false;
-
-    private RichText beanLevelViolations;
-
-    @Override
-    public void onFieldGroupChange(MBeanFieldGroup<T> beanFieldGroup) {
-        boolean wasValid = isValid;
-        isValid = fieldGroup.isValid();
-        adjustSaveButtonState();
-        adjustResetButtonState();
-        if (wasValid != isValid) {
-            fireValidityChangedEvent();
-        }
-        updateConstraintViolationsDisplay();
-    }
-
-    protected void updateConstraintViolationsDisplay() {
-        if (beanLevelViolations != null) {
-            Collection<String> errorMessages = getFieldGroup().
-                    getBeanLevelValidationErrors();
-            if (!errorMessages.isEmpty()) {
-                StringBuilder sb = new StringBuilder();
-                for (String e : errorMessages) {
-                    sb.append(e);
-                    sb.append("<br/>");
-                }
-                beanLevelViolations.setValue(sb.toString());
-                beanLevelViolations.setVisible(true);
-            } else {
-                beanLevelViolations.setVisible(false);
-                beanLevelViolations.setValue("");
-            }
-        }
-    }
-
-    public Component getConstraintViolationsDisplay() {
-        if (beanLevelViolations == null) {
-            beanLevelViolations = new RichText();
-            beanLevelViolations.setVisible(false);
-            beanLevelViolations.setStyleName(ValoTheme.LABEL_FAILURE);
-        }
-        return beanLevelViolations;
-    }
-
-    public boolean isValid() {
-        return isValid;
-    }
-
-    protected void adjustSaveButtonState() {
-        if (isEagerValidation() && isBound()) {
-            boolean beanModified = fieldGroup.isBeanModified();
-            getSaveButton().setEnabled(beanModified && isValid());
-        }
-    }
-
-    protected boolean isBound() {
-        return fieldGroup != null;
-    }
-
-    protected void adjustResetButtonState() {
-        if (popup != null && popup.getParent() != null) {
-            // Assume cancel button in a form opened to a popup also closes
-            // it, allows closing via cancel button by default
-            getResetButton().setEnabled(true);
-            return;
-        }
-        if (isEagerValidation() && isBound()) {
-            boolean modified = fieldGroup.isBeanModified();
-            getResetButton().setEnabled(modified || popup != null);
-        }
-    }
-
-    public void addValidityChangedListener(ValidityChangedListener<T> listener) {
-        addListener(ValidityChangedEvent.class, listener,
-                ValidityChangedEvent.method);
-    }
-
-    public void removeValidityChangedListener(
-            ValidityChangedListener<T> listener) {
-        removeListener(ValidityChangedEvent.class, listener,
-                ValidityChangedEvent.method);
-    }
-
-    private void fireValidityChangedEvent() {
-        fireEvent(new ValidityChangedEvent<T>(this));
-    }
+    private boolean settingBean;
 
     public interface SavedHandler<T> extends Serializable {
 
@@ -212,22 +60,45 @@ public abstract class AbstractForm<T> extends CustomComponent implements
     private SavedHandler<T> savedHandler;
     private ResetHandler<T> resetHandler;
     private DeleteHandler<T> deleteHandler;
-    private boolean eagerValidation = true;
+    private String modalWindowTitle = "Edit entry";
+    private String saveCaption = "Save";
+    private String deleteCaption = "Delete";
+    private String cancelCaption = "Cancel";
+    private Window popup;
+    private Binder<T> binder;
+    private boolean hasChanges = false;
 
-    public boolean isEagerValidation() {
-        return eagerValidation;
-    }
+    public AbstractForm(Class<T> entityType) {
+        addAttachListener(new AttachListener() {
 
-    /**
-     * In case one is working with "detached entities" enabling eager validation
-     * will highly improve usability. The validity of the form will be updated
-     * on each changes and save/cancel buttons will reflect to the validity and
-     * possible changes.
-     *
-     * @param eagerValidation true if the form should have eager validation
-     */
-    public void setEagerValidation(boolean eagerValidation) {
-        this.eagerValidation = eagerValidation;
+            private static final long serialVersionUID = 3193438171004932112L;
+
+            @Override
+            public void attach(AttachEvent event) {
+                lazyInit();
+            }
+        });
+        binder = new BeanValidationBinder<>(entityType);
+        binder.addValueChangeListener(e -> {
+            // binder.hasChanges is not really usefull so track it manually
+            if (!settingBean) {
+                hasChanges = true;
+            }
+        });
+        binder.addStatusChangeListener(e -> {
+            // TODO optimize this
+            // TODO see if explicitly calling writeBean would write also invalid
+            // values -> would make functionality more logical and easier for 
+            // users to do validation and error reporting
+
+            // Eh, value change listener is called after status change listener, so
+            // ensure flag is on...
+            if (!settingBean) {
+                hasChanges = true;
+            }
+            adjustResetButtonState();
+            adjustSaveButtonState();
+        });
     }
 
     /**
@@ -239,86 +110,28 @@ public abstract class AbstractForm<T> extends CustomComponent implements
      * the object is bound to fields or to do something after the bean binding.
      *
      * @param entity the object to be edited by this form
-     * @return the MBeanFieldGroup that is used to do the binding. Most often
-     * you don't need to do anything with it.
      */
-    public MBeanFieldGroup<T> setEntity(T entity) {
+    public void setEntity(T entity) {
         this.entity = entity;
+        this.settingBean = true;
         lazyInit();
         if (entity != null) {
-            if (isBound()) {
-                fieldGroup.unbind();
-            }
-            fieldGroup = bindEntity(entity);
-            try {
-                fieldGroup.setValidationGroups(getValidationGroups());
-            } catch (Throwable e) {
-                // Probably no Validation API available
-            }
-
-            for (Map.Entry<MBeanFieldGroup.MValidator<T>, Collection<AbstractComponent>> e : mValidators.
-                    entrySet()) {
-                fieldGroup.addValidator(e.getKey(), e.getValue().toArray(
-                        new AbstractComponent[e.getValue().size()]));
-            }
-            for (Map.Entry<Class<?>, AbstractComponent> e : validatorToErrorTarget.entrySet()) {
-                fieldGroup.setValidationErrorTarget(e.getKey(), e.getValue());
-            }
-
-            isValid = fieldGroup.isValid();
-            if (isEagerValidation()) {
-                fieldGroup.withEagerValidation(this);
-                adjustSaveButtonState();
-                adjustResetButtonState();
-            }
-            fieldGroup.hideInitialEmpyFieldValidationErrors();
+            binder.setBean(entity);
+            hasChanges = false;
             setVisible(true);
-            return fieldGroup;
         } else {
+            binder.setBean(null);
+            hasChanges = false;
             setVisible(false);
-            return null;
         }
+        settingBean = false;
     }
 
     /**
-     * Creates a field group, configures the fields, binds the entity to those
-     * fields
-     *
-     * @param entity The entity to bind
-     * @return the fieldGroup created
+     * @return true if bean has been changed since last setEntity call.
      */
-    protected MBeanFieldGroup<T> bindEntity(T entity) {
-        return BeanBinder.bind(entity, this, getNestedProperties());
-    }
-
-    private String[] nestedProperties;
-
-    public String[] getNestedProperties() {
-        return nestedProperties;
-    }
-
-    public void setNestedProperties(String... nestedProperties) {
-        this.nestedProperties = nestedProperties;
-    }
-
-    /**
-     * Sets the given object to be a handler for saved,reset,deleted, based on
-     * what it happens to implement.
-     *
-     * @param handler the handler to be set as saved/reset/delete handler
-     */
-    public void setHandler(Object handler) {
-        if (handler != null) {
-            if (handler instanceof SavedHandler) {
-                setSavedHandler((SavedHandler<T>) handler);
-            }
-            if (handler instanceof ResetHandler) {
-                setResetHandler((ResetHandler<T>) handler);
-            }
-            if (handler instanceof DeleteHandler) {
-                setDeleteHandler((DeleteHandler<T>) handler);
-            }
-        }
+    public boolean hasChanges() {
+        return hasChanges;
     }
 
     public void setSavedHandler(SavedHandler<T> savedHandler) {
@@ -348,46 +161,117 @@ public abstract class AbstractForm<T> extends CustomComponent implements
         return deleteHandler;
     }
 
-    public Window openInModalPopup() {
-        popup = new Window(getModalWindowTitle(), this);
-        popup.setModal(true);
-        UI.getCurrent().addWindow(popup);
-        focusFirst();
-        return popup;
+    public String getSaveCaption() {
+        return saveCaption;
     }
 
-    /**
-     *
-     * @return the last Popup into which the Form was opened with
-     * #openInModalPopup method or null if the form hasn't been use in window
-     */
-    public Window getPopup() {
-        return popup;
+    public void setSaveCaption(String saveCaption) {
+        this.saveCaption = saveCaption;
     }
 
-    /**
-     * If the form is opened into a popup window using openInModalPopup(), you
-     * you can use this method to close the popup.
-     */
-    public void closePopup() {
-        if (popup != null) {
-            popup.close();
-            popup = null;
+    public String getModalWindowTitle() {
+        return modalWindowTitle;
+    }
+
+    public void setModalWindowTitle(String modalWindowTitle) {
+        this.modalWindowTitle = modalWindowTitle;
+    }
+
+    public String getDeleteCaption() {
+        return deleteCaption;
+    }
+
+    public void setDeleteCaption(String deleteCaption) {
+        this.deleteCaption = deleteCaption;
+    }
+
+    public String getCancelCaption() {
+        return cancelCaption;
+    }
+
+    public void setCancelCaption(String cancelCaption) {
+        this.cancelCaption = cancelCaption;
+    }
+
+    public Binder<T> getBinder() {
+        return binder;
+    }
+
+    public void setBinder(Binder<T> binder) {
+        this.binder = binder;
+    }
+
+    protected void lazyInit() {
+        if (getCompositionRoot() == null) {
+            setCompositionRoot(createContent());
+            bind();
         }
     }
 
     /**
-     * @return A default toolbar containing save/cancel/delete buttons
+     * By default just does simple name based binding. Override this method to
+     * customize the binding.
      */
-    public HorizontalLayout getToolbar() {
-        return new MHorizontalLayout(
-                getSaveButton(),
-                getResetButton(),
-                getDeleteButton()
-        );
+    protected void bind() {
+        binder.bindInstanceFields(this);
     }
 
-    protected Button createCancelButton() {
+    /**
+     * This method should return the actual content of the form, including
+     * possible toolbar.
+     *
+     * Use setEntity(T entity) to fill in the data. Am example implementation
+     * could look like this:
+     * <pre><code>
+     * public class PersonForm extends AbstractForm&lt;Person&gt; {
+     *
+     *     private TextField firstName = new MTextField(&quot;First Name&quot;);
+     *     private TextField lastName = new MTextField(&quot;Last Name&quot;);
+     *
+     *    {@literal @}Override
+     *     protected Component createContent() {
+     *         return new MVerticalLayout(
+     *                 new FormLayout(
+     *                         firstName,
+     *                         lastName
+     *                 ),
+     *                 getToolbar()
+     *         );
+     *     }
+     * }
+     * </code></pre>
+     *
+     * @return the content of the form
+     *
+     */
+    protected abstract Component createContent();
+
+    protected void adjustSaveButtonState() {
+        if (isBound()) {
+            boolean valid = binder.isValid();
+            getSaveButton().setEnabled(hasChanges() && valid);
+        }
+    }
+
+    public Button getSaveButton() {
+        if (saveButton == null) {
+            setSaveButton(createSaveButton());
+        }
+        return saveButton;
+    }
+
+    protected Button createSaveButton() {
+        return new PrimaryButton(getSaveCaption())
+                .withVisible(false);
+    }
+
+    private Button saveButton;
+
+    protected boolean isBound() {
+        return binder != null && binder.getBean() != null;
+    }
+
+    protected Button createResetButton() {
         return new MButton(getCancelCaption())
                 .withVisible(false);
     }
@@ -395,7 +279,7 @@ public abstract class AbstractForm<T> extends CustomComponent implements
 
     public Button getResetButton() {
         if (resetButton == null) {
-            setResetButton(createCancelButton());
+            setResetButton(createResetButton());
         }
         return resetButton;
     }
@@ -411,33 +295,6 @@ public abstract class AbstractForm<T> extends CustomComponent implements
                 reset(event);
             }
         });
-    }
-
-    protected Button createSaveButton() {
-        return new PrimaryButton(getSaveCaption())
-                .withVisible(false);
-    }
-
-    private Button saveButton;
-
-    public void setSaveButton(Button saveButton) {
-        this.saveButton = saveButton;
-        saveButton.addClickListener(new Button.ClickListener() {
-
-            private static final long serialVersionUID = -2058398434893034442L;
-
-            @Override
-            public void buttonClick(Button.ClickEvent event) {
-                save(event);
-            }
-        });
-    }
-
-    public Button getSaveButton() {
-        if (saveButton == null) {
-            setSaveButton(createSaveButton());
-        }
-        return saveButton;
     }
 
     protected Button createDeleteButton() {
@@ -467,22 +324,76 @@ public abstract class AbstractForm<T> extends CustomComponent implements
         return deleteButton;
     }
 
+    protected void adjustResetButtonState() {
+        if (popup != null && popup.getParent() != null) {
+            // Assume cancel button in a form opened to a popup also closes
+            // it, allows closing via cancel button by default
+            getResetButton().setEnabled(true);
+            return;
+        }
+        if (isBound()) {
+            boolean modified = hasChanges();
+            getResetButton().setEnabled(modified || popup != null);
+        }
+    }
+
+    public void setSaveButton(Button button) {
+        this.saveButton = button;
+        saveButton.addClickListener(new Button.ClickListener() {
+
+            private static final long serialVersionUID = -2058398434893034442L;
+
+            @Override
+            public void buttonClick(Button.ClickEvent event) {
+                save(event);
+            }
+        });
+    }
+
+    /**
+     * @return the currently edited entity or null if the form is currently
+     * unbound
+     */
+    public T getEntity() {
+        return entity;
+    }
+
     protected void save(Button.ClickEvent e) {
         savedHandler.onSave(getEntity());
-        getFieldGroup().setBeanModified(false);
-        adjustResetButtonState();
+        hasChanges = false;
         adjustSaveButtonState();
+        adjustResetButtonState();
     }
 
     protected void reset(Button.ClickEvent e) {
         resetHandler.onReset(getEntity());
-        getFieldGroup().setBeanModified(false);
-        adjustResetButtonState();
+        hasChanges = false;
         adjustSaveButtonState();
+        adjustResetButtonState();
     }
 
     protected void delete(Button.ClickEvent e) {
         deleteHandler.onDelete(getEntity());
+        hasChanges = false;
+    }
+
+    /**
+     * @return A default toolbar containing save/cancel/delete buttons
+     */
+    public HorizontalLayout getToolbar() {
+        return new MHorizontalLayout(
+                getSaveButton(),
+                getResetButton(),
+                getDeleteButton()
+        );
+    }
+
+    public Window openInModalPopup() {
+        popup = new Window(getModalWindowTitle(), this);
+        popup.setModal(true);
+        UI.getCurrent().addWindow(popup);
+        focusFirst();
+        return popup;
     }
 
     /**
@@ -520,184 +431,18 @@ public abstract class AbstractForm<T> extends CustomComponent implements
     }
 
     /**
-     * This method should return the actual content of the form, including
-     * possible toolbar.
      *
-     * Use setEntity(T entity) to fill in the data. Am example implementation
-     * could look like this:
-     * <pre><code>
-     * public class PersonForm extends AbstractForm&lt;Person&gt; {
-     *
-     *     private TextField firstName = new MTextField(&quot;First Name&quot;);
-     *     private TextField lastName = new MTextField(&quot;Last Name&quot;);
-     *
-     *    {@literal @}Override
-     *     protected Component createContent() {
-     *         return new MVerticalLayout(
-     *                 new FormLayout(
-     *                         firstName,
-     *                         lastName
-     *                 ),
-     *                 getToolbar()
-     *         );
-     *     }
-     * }
-     * </code></pre>
-     *
-     * @return the content of the form
-     *
+     * @return the last Popup into which the Form was opened with
+     * #openInModalPopup method or null if the form hasn't been use in window
      */
-    protected abstract Component createContent();
-
-    public MBeanFieldGroup<T> getFieldGroup() {
-        return fieldGroup;
+    public Window getPopup() {
+        return popup;
     }
-
-    public T getEntity() {
-        return entity;
-    }
-
-    private final LinkedHashMap<MBeanFieldGroup.MValidator<T>, Collection<AbstractComponent>> mValidators
-            = new LinkedHashMap<>();
-
-    private final Map<Class<?>, AbstractComponent> validatorToErrorTarget = new LinkedHashMap<>();
-
-    private Class<?>[] validationGroups;
-
-    /**
-     * @return the JSR 303 bean validation groups that should be used to
-     * validate the bean
-     */
-    public Class<?>[] getValidationGroups() {
-        if (validationGroups == null) {
-            return new Class<?>[]{Default.class};
+    
+    public void closePopup() {
+        if(getPopup() != null) {
+            getPopup().close();
         }
-        return validationGroups;
-    }
-
-    /**
-     * @param validationGroups the JSR 303 bean validation groups that should be
-     * used to validate the bean. Note, that groups currently only affect
-     * cross-field/bean-level validation.
-     */
-    public void setValidationGroups(Class<?>... validationGroups) {
-        this.validationGroups = validationGroups;
-        if (getFieldGroup() != null) {
-            getFieldGroup().setValidationGroups(validationGroups);
-        }
-    }
-
-    public void setValidationErrorTarget(Class<?> aClass,
-            AbstractComponent errorTarget) {
-        validatorToErrorTarget.put(aClass, errorTarget);
-        if (getFieldGroup() != null) {
-            getFieldGroup().setValidationErrorTarget(aClass, errorTarget);
-        }
-    }
-
-    /**
-     * EXPERIMENTAL: The cross field validation support is still experimental
-     * and its API is likely to change.
-     *
-     * @param validator a validator that validates the whole bean making cross
-     * field validation much simpler
-     * @param fields the ui fields that this validator affects and on which a
-     * possible error message is shown.
-     * @return this FieldGroup
-     */
-    public AbstractForm<T> addValidator(
-            MBeanFieldGroup.MValidator<T> validator,
-            AbstractComponent... fields) {
-        mValidators.put(validator, Arrays.asList(fields));
-        if (getFieldGroup() != null) {
-            getFieldGroup().addValidator(validator, fields);
-        }
-        return this;
-    }
-
-    public AbstractForm<T> removeValidator(
-            MBeanFieldGroup.MValidator<T> validator) {
-        Collection<AbstractComponent> remove = mValidators.remove(validator);
-        if (remove != null) {
-            if (getFieldGroup() != null) {
-                getFieldGroup().removeValidator(validator);
-            }
-        }
-        return this;
-    }
-
-    /**
-     * Removes all MValidators added the MFieldGroup
-     *
-     * @return the instance
-     */
-    public AbstractForm<T> clearValidators() {
-        mValidators.clear();
-        if (getFieldGroup() != null) {
-            getFieldGroup().clearValidators();
-        }
-        return this;
-    }
-
-    public void setRequired(Field... fields) {
-        for (Field field : fields) {
-            field.setRequired(true);
-        }
-    }
-
-    public String getModalWindowTitle() {
-        return modalWindowTitle;
-    }
-
-    public void setModalWindowTitle(String modalWindowTitle) {
-        this.modalWindowTitle = modalWindowTitle;
-    }
-
-    public String getCancelCaption() {
-        return cancelCaption;
-    }
-
-    public void setCancelCaption(String cancelCaption) {
-        this.cancelCaption = cancelCaption;
-    }
-
-    public String getSaveCaption() {
-        return saveCaption;
-    }
-
-    public void setSaveCaption(String saveCaption) {
-        this.saveCaption = saveCaption;
-    }
-
-    public String getDeleteCaption() {
-        return deleteCaption;
-    }
-
-    public void setDeleteCaption(String deleteCaption) {
-        this.deleteCaption = deleteCaption;
-    }
-
-    public AbstractForm<T> withI18NCaption(String saveCaption, String deleteCaption, String cancelCaption) {
-        this.saveCaption = saveCaption;
-        this.deleteCaption = deleteCaption;
-        this.cancelCaption = cancelCaption;
-        return this;
-    }
-
-    public boolean isValidateOnlyBoundFields() {
-        return fieldGroup.isValidateOnlyBoundFields();
-    }
-
-    /**
-     * Tells that only bound fields from the bean (bound entity) should be validated.
-     * Useful when the form does not contain all bean properties or, on the other hand, is not valid until all properties are valid.
-     * By default, only bound bean properties are validated.
-     * If set to false, all bean properties will be validated.
-     *
-     * @param validateOnlyBoundFields true if only bound fields should be validated
-     */
-    public void setValidateOnlyBoundFields(boolean validateOnlyBoundFields) {
-        fieldGroup.setValidateOnlyBoundFields(validateOnlyBoundFields);
     }
 
 }

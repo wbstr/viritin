@@ -2,6 +2,8 @@ package org.vaadin.viritin.fields;
 
 import org.apache.commons.lang3.StringUtils;
 
+import com.vaadin.event.FieldEvents;
+
 /**
  * An field to edit integers.
  *
@@ -13,7 +15,7 @@ import org.apache.commons.lang3.StringUtils;
  *
  * @author Matti Tahvonen
  */
-public class IntegerField extends AbstractNumberField<Integer> {
+public class IntegerField extends AbstractNumberField<IntegerField, Integer> {
 
     private static final long serialVersionUID = 377246000306551089L;
 
@@ -28,39 +30,25 @@ public class IntegerField extends AbstractNumberField<Integer> {
     @Override
     protected void userInputToValue(String str) {
         if (StringUtils.isNotBlank(str)) {
-            setValue(Integer.parseInt(str));
+            value = Integer.parseInt(str);
         } else {
-            setValue(null);
+            value = null;
         }
     }
 
     @Override
-    public Class<? extends Integer> getType() {
-        return Integer.class;
+    public IntegerField withBlurListener(FieldEvents.BlurListener listener) {
+        return (IntegerField) super.withBlurListener(listener);
     }
 
-    public IntegerField withCaption(String caption) {
-        setCaption(caption);
-        return this;
+    @Override
+    public IntegerField withFocusListener(FieldEvents.FocusListener listener) {
+        return (IntegerField) super.withFocusListener(listener);
     }
 
-    public IntegerField withId(String id) {
-        setId(id);
-        return this;
+    @Override
+    public Integer getValue() {
+        return value;
     }
 
-    public IntegerField withFullWidth() {
-        setWidth("100%");
-        return this;
-    }
-
-    public IntegerField withWidth(float width, Unit unit) {
-        setWidth(width, unit);
-        return this;
-    }
-
-    public IntegerField withWidth(String width) {
-        setWidth(width);
-        return this;
-    }
 }

@@ -16,10 +16,10 @@
 package org.vaadin.viritin;
 
 import com.vaadin.server.Sizeable;
-import com.vaadin.ui.TextField;
+import com.vaadin.v7.ui.TextField;
 import org.junit.Assert;
 import org.junit.Test;
-import org.vaadin.viritin.fields.IntegerField;
+import org.vaadin.viritin.v7.fields.IntegerField;
 
 /**
  *

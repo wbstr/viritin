@@ -15,8 +15,10 @@
  */
 package org.vaadin.viritin;
 
-import com.vaadin.data.Item;
-import com.vaadin.data.Property;
+import org.vaadin.viritin.v7.ListContainer;
+import org.vaadin.viritin.v7.DynaBeanItem;
+import com.vaadin.v7.data.Item;
+import com.vaadin.v7.data.Property;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;

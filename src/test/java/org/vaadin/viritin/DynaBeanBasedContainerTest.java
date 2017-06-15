@@ -15,9 +15,10 @@
  */
 package org.vaadin.viritin;
 
+import org.vaadin.viritin.v7.ListContainer;
 import org.vaadin.viritin.testdomain.Person;
-import com.vaadin.data.Item;
-import com.vaadin.data.util.BeanItemContainer;
+import com.vaadin.v7.data.Item;
+import com.vaadin.v7.data.util.BeanItemContainer;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
@@ -48,6 +49,7 @@ public class DynaBeanBasedContainerTest {
     public ExpectedException thrown = ExpectedException.none();
 
     @Test
+    @Ignore("Irrelevant with V8")
     public void testEmptyList() {
         List<Person> l = new ArrayList<>();
         // Test with BeanItemContainer
@@ -106,6 +108,7 @@ public class DynaBeanBasedContainerTest {
     }
 
     @Test
+    @Ignore("Irrelevant with V8")
     public void testMemoryUsage() {
         System.out.println("\n Testing List container from Maddon");
 

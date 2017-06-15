@@ -1,6 +1,6 @@
 package org.vaadin.viritin.it.issues;
 
-import com.vaadin.data.fieldgroup.PropertyId;
+import com.vaadin.annotations.PropertyId;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.Notification;
@@ -12,9 +12,9 @@ import javax.validation.ConstraintViolation;
 import javax.validation.constraints.NotNull;
 import org.apache.commons.collections.CollectionUtils;
 import org.vaadin.addonhelpers.AbstractTest;
-import org.vaadin.viritin.MBeanFieldGroup;
-import org.vaadin.viritin.fields.MTextField;
-import org.vaadin.viritin.form.AbstractForm;
+import org.vaadin.viritin.v7.MBeanFieldGroup;
+import org.vaadin.viritin.v7.fields.MTextField;
+import org.vaadin.viritin.v7.form.AbstractForm;
 import org.vaadin.viritin.layouts.MFormLayout;
 import org.vaadin.viritin.layouts.MHorizontalLayout;
 import org.vaadin.viritin.layouts.MMarginInfo;

@@ -1,18 +1,18 @@
 package org.vaadin.viritin.fields;
 
-import com.vaadin.data.Property;
-import com.vaadin.data.util.converter.Converter;
-import com.vaadin.event.FieldEvents;
+import com.vaadin.event.FieldEvents.BlurListener;
+import com.vaadin.event.FieldEvents.FocusListener;
 import com.vaadin.server.ErrorMessage;
 import com.vaadin.server.FontAwesome;
 import com.vaadin.server.Page;
 import com.vaadin.server.Resource;
-import com.vaadin.ui.AbstractTextField;
+import com.vaadin.shared.Registration;
+import com.vaadin.shared.ui.ValueChangeMode;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.CustomField;
-import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Layout;
+import com.vaadin.ui.TextField;
 import com.vaadin.ui.themes.ValoTheme;
 import org.vaadin.viritin.button.MButton;
 import org.vaadin.viritin.layouts.MHorizontalLayout;
@@ -27,9 +27,9 @@ import org.vaadin.viritin.layouts.MHorizontalLayout;
  */
 public class ClearableTextField extends CustomField {
 
-    private final MTextField textfield = new MTextField();
+    private final TextField textfield = new TextField();
     private final MButton clearButton = new MButton(FontAwesome.TIMES).withStyleName(ValoTheme.BUTTON_ICON_ONLY);
-    private final HorizontalLayout root = new MHorizontalLayout()
+    private final MHorizontalLayout root = new MHorizontalLayout()
             .expand(textfield).add(clearButton)
             .withSpacing(false)
             .withFullWidth()
@@ -44,20 +44,15 @@ public class ClearableTextField extends CustomField {
                 textfield.focus();
             }
         });
-
-        textfield.addValueChangeListener(new ValueChangeListener() {
+        
+        textfield.addValueChangeListener(new ValueChangeListener<String>() {
             @Override
-            public void valueChange(Property.ValueChangeEvent event) {
-                setValue(textfield.getValue());
+            public void valueChange(ValueChangeEvent<String> event) {
+                setValue(event.getValue());
             }
         });
 
-        textfield.addTextChangeListener(new FieldEvents.TextChangeListener() {
-            @Override
-            public void textChange(FieldEvents.TextChangeEvent event) {
-                setValue(event.getText());
-            }
-        });
+        textfield.setValueChangeMode(ValueChangeMode.LAZY);
 
         setWidth("300px");
     }
@@ -66,20 +61,6 @@ public class ClearableTextField extends CustomField {
     public ClearableTextField(String caption) {
         this();
         this.setCaption(caption);
-    }
-
-    public ClearableTextField(Property dataSource) {
-        this();
-        textfield.setPropertyDataSource(dataSource);
-
-    }
-
-    @SuppressWarnings("OverridableMethodCallInConstructor")
-    public ClearableTextField(String caption, Property dataSource) {
-        this();
-        this.setCaption(caption);
-        textfield.setPropertyDataSource(dataSource);
-
     }
 
     @SuppressWarnings("OverridableMethodCallInConstructor")
@@ -93,7 +74,7 @@ public class ClearableTextField extends CustomField {
      *
      * @return The TextField from the composition
      */
-    public MTextField getTextfield() {
+    public TextField getTextfield() {
         return textfield;
     }
 
@@ -120,24 +101,15 @@ public class ClearableTextField extends CustomField {
         clearButton.setEnabled(!readOnly);
     }
 
-    @Override
-    public void setImmediate(boolean immediate) {
-        super.setImmediate(immediate);
-        textfield.setImmediate(immediate);
-    }
-
     /**
      * A method to add custom click listener to the clear button.
      *
+     * @return the listener registration
      * @see Button#addClickListener(Button.ClickListener listener)
      * @param listener the listener to be added to the clear button
      */
-    public void addClickListener(Button.ClickListener listener) {
-        clearButton.addClickListener(listener);
-    }
-
-    public void removeClickListener(Button.ClickListener listener) {
-        clearButton.removeClickListener(listener);
+    public Registration addClickListener(Button.ClickListener listener) {
+        return clearButton.addClickListener(listener);
     }
 
     public void click() {
@@ -178,22 +150,6 @@ public class ClearableTextField extends CustomField {
         textfield.clear();
     }
 
-    public String getNullRepresentation() {
-        return textfield.getNullRepresentation();
-    }
-
-    public boolean isNullSettingAllowed() {
-        return textfield.isNullSettingAllowed();
-    }
-
-    public void setNullRepresentation(String nullRepresentation) {
-        textfield.setNullRepresentation(nullRepresentation);
-    }
-
-    public void setNullSettingAllowed(boolean nullSettingAllowed) {
-        textfield.setNullSettingAllowed(nullSettingAllowed);
-    }
-
     @Override
     public boolean isEmpty() {
         return super.isEmpty();
@@ -207,52 +163,20 @@ public class ClearableTextField extends CustomField {
         textfield.setMaxLength(maxLength);
     }
 
-    public int getColumns() {
-        return textfield.getColumns();
+    public String getPlaceholder() {
+        return textfield.getPlaceholder();
     }
 
-    public void setColumns(int columns) {
-        textfield.setColumns(columns);
-    }
-
-    public String getInputPrompt() {
-        return textfield.getInputPrompt();
-    }
-
-    public void setInputPrompt(String inputPrompt) {
-        textfield.setInputPrompt(inputPrompt);
-    }
-
-    public void setTextChangeEventMode(AbstractTextField.TextChangeEventMode inputEventMode) {
-        textfield.setTextChangeEventMode(inputEventMode);
-    }
-
-    public AbstractTextField.TextChangeEventMode getTextChangeEventMode() {
-        return textfield.getTextChangeEventMode();
-    }
-
-    public void addTextChangeListener(FieldEvents.TextChangeListener listener) {
-        textfield.addTextChangeListener(listener);
-    }
-
-    public void removeTextChangeListener(FieldEvents.TextChangeListener listener) {
-        textfield.removeTextChangeListener(listener);
-    }
-
-    public void setTextChangeTimeout(int timeout) {
-        textfield.setTextChangeTimeout(timeout);
-    }
-
-    public int getTextChangeTimeout() {
-        return textfield.getTextChangeTimeout();
+    public void setPlaceholder(String inputPrompt) {
+        textfield.setPlaceholder(inputPrompt);
     }
 
     public void selectAll() {
         textfield.selectAll();
     }
 
-    public void setSelectionRange(int pos, int length) {
-        textfield.setSelectionRange(pos, length);
+    public void setSelection(int pos, int length) {
+        textfield.setSelection(pos, length);
     }
 
     public void setCursorPosition(int pos) {
@@ -263,34 +187,16 @@ public class ClearableTextField extends CustomField {
         return textfield.getCursorPosition();
     }
 
-    public void addFocusListener(FieldEvents.FocusListener listener) {
-        textfield.addFocusListener(listener);
+    public Registration addFocusListener(FocusListener listener) {
+        return textfield.addFocusListener(listener);
     }
 
-    public void removeFocusListener(FieldEvents.FocusListener listener) {
-        textfield.removeFocusListener(listener);
-    }
-
-    public void addBlurListener(FieldEvents.BlurListener listener) {
-        textfield.addBlurListener(listener);
-    }
-
-    public void removeBlurListener(FieldEvents.BlurListener listener) {
-        textfield.removeBlurListener(listener);
+    public Registration addBlurListener(BlurListener listener) {
+        return textfield.addBlurListener(listener);
     }
 
     public ClearableTextField withCaption(String caption) {
         super.setCaption(caption);
-        return this;
-    }
-
-    public ClearableTextField withConversionError(String message) {
-        setConversionError(message);
-        return this;
-    }
-
-    public ClearableTextField withConverter(Converter<String, ?> converter) {
-        setConverter(converter);
         return this;
     }
 
@@ -302,16 +208,6 @@ public class ClearableTextField extends CustomField {
     public ClearableTextField withValue(String value) {
         setValue(value);
         return this;
-    }
-
-    protected void doEagerValidation() {
-        textfield.doEagerValidation();
-    }
-
-    @Override
-    protected void setInternalValue(Object newValue) {
-        super.setInternalValue(newValue);
-        textfield.setValue(newValue.toString());
     }
 
     @Override
@@ -336,11 +232,6 @@ public class ClearableTextField extends CustomField {
     }
 
     @Override
-    public void beforeClientResponse(boolean initial) {
-        super.beforeClientResponse(initial); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
     public void focus() {
         textfield.focus();
     }
@@ -351,13 +242,9 @@ public class ClearableTextField extends CustomField {
     }
 
     @Override
-    public Class getType() {
-        return String.class;
-    }
-
-    @Override
     public void attach() {
         super.attach();
+        // TODO optimize this so that it is added only once
         Page.getCurrent().getStyles().add(
                 ".clearable-textfield .v-widget {\n"
                 + "	border-radius: 4px 4px 4px 4px;\n"
@@ -371,6 +258,16 @@ public class ClearableTextField extends CustomField {
                 + "	border-top-right-radius: 0;\n"
                 + "	border-bottom-right-radius: 0;\n"
                 + "}\n");
+    }
+
+    @Override
+    protected void doSetValue(Object newValue) {
+        textfield.setValue(newValue.toString());
+    }
+
+    @Override
+    public Object getValue() {
+        return textfield.getValue();
     }
 
 }

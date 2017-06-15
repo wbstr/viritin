@@ -1,25 +1,33 @@
 package org.vaadin.viritin.fields;
 
+import org.vaadin.viritin.fluency.ui.FluentCustomField;
 import org.vaadin.viritin.util.HtmlElementPropertySetter;
 
-import com.vaadin.data.Property;
 import com.vaadin.event.FieldEvents;
+import com.vaadin.event.FieldEvents.BlurListener;
+import com.vaadin.event.FieldEvents.FocusListener;
+import com.vaadin.shared.Registration;
 import com.vaadin.ui.Component;
 import com.vaadin.ui.CustomField;
+import com.vaadin.ui.TextField;
 
 /**
- *
+ * @param <T> field value type
  * @author Matti Tahvonen
- * @param <T>  field value type
  */
-public abstract class AbstractNumberField<T> extends CustomField<T> implements
-        EagerValidateable, FieldEvents.TextChangeNotifier {
+public abstract class AbstractNumberField<S extends AbstractNumberField<S, T>, T>
+        extends CustomField<T>
+        implements FieldEvents.FocusNotifier, FieldEvents.BlurNotifier,
+        FluentCustomField<S, T> {
 
     private static final long serialVersionUID = 5925606478174987241L;
 
     private String htmlFieldType = "number";
+    
+    protected T value;
 
-    protected MTextField tf = new MTextField() {
+
+    protected TextField tf = new TextField() {
 
         private static final long serialVersionUID = 6823601969399906594L;
 
@@ -36,40 +44,51 @@ public abstract class AbstractNumberField<T> extends CustomField<T> implements
         s.setJavaScriptEventHandler("keypress",
                 "function(e) {var c = viritin.getChar(e); return c==null || /^[-\\d\\n\\t\\r]+$/.test(c);}");
     }
+
+    private boolean ignoreValueChange = false;
+    
     protected HtmlElementPropertySetter s = new HtmlElementPropertySetter(tf);
-    protected Property.ValueChangeListener vcl = new Property.ValueChangeListener() {
+    protected ValueChangeListener<String> vcl = new ValueChangeListener<String>() {
 
         private static final long serialVersionUID = 5034199201545161061L;
 
         @Override
-        public void valueChange(Property.ValueChangeEvent event) {
-            Object value = event.getProperty().getValue();
-            if(value != null) {
-                userInputToValue(String.valueOf(value));
-            }else {
-                setValue(null);
+        public void valueChange(ValueChangeEvent<String> event) {
+            if(!ignoreValueChange) {
+                T old = getValue();
+                String value = event.getValue();
+                if (value != null) {
+                    userInputToValue(value);
+                    fireEvent(new ValueChangeEvent(AbstractNumberField.this, old, true));
+                } else {
+                    setValue(null);
+                }
             }
         }
+
     };
 
-    protected FieldEvents.TextChangeListener tcl;
+    public AbstractNumberField() {
+        tf.addValueChangeListener(vcl);
+    }
 
     protected abstract void userInputToValue(String str);
 
     @Override
     protected Component initContent() {
-        tf.addValueChangeListener(vcl);
         return tf;
     }
 
     @Override
-    protected void setInternalValue(T newValue) {
-        super.setInternalValue(newValue);
-        if (newValue == null) {
-            tf.setValue(null);
+    protected void doSetValue(T value) {
+        this.value = value;
+        ignoreValueChange = true;
+        if (value == null) {
+            tf.clear();
         } else {
-            tf.setValue(valueToPresentation(newValue));
+            tf.setValue(valueToPresentation(value));
         }
+        ignoreValueChange = false;
     }
 
     protected String valueToPresentation(T newValue) {
@@ -88,57 +107,6 @@ public abstract class AbstractNumberField<T> extends CustomField<T> implements
      */
     public void setHtmlFieldType(String htmlFieldType) {
         this.htmlFieldType = htmlFieldType;
-    }
-
-    @Override
-    public void addTextChangeListener(
-            FieldEvents.TextChangeListener listener) {
-        tf.addTextChangeListener(listener);
-    }
-
-    @Override
-    public void addListener(
-            FieldEvents.TextChangeListener listener) {
-        tf.addTextChangeListener(listener);
-    }
-
-    @Override
-    public void removeTextChangeListener(
-            FieldEvents.TextChangeListener listener) {
-        tf.removeTextChangeListener(listener);
-    }
-
-    @Override
-    public void removeListener(
-            FieldEvents.TextChangeListener listener) {
-        tf.removeTextChangeListener(listener);
-    }
-
-    @Override
-    public boolean isEagerValidation() {
-        return tf.isEagerValidation();
-    }
-
-    @Override
-    public void setEagerValidation(boolean eagerValidation) {
-        tf.setEagerValidation(true);
-        if (eagerValidation && tcl == null) {
-            tcl = new FieldEvents.TextChangeListener() {
-
-                private static final long serialVersionUID = 2244473923631502546L;
-
-                @Override
-                public void textChange(
-                        FieldEvents.TextChangeEvent event) {
-                    userInputToValue(event.getText());
-                }
-            };
-            tf.addTextChangeListener(tcl);
-        }
-        if (!eagerValidation && tcl != null) {
-            tf.removeTextChangeListener(tcl);
-            tcl = null;
-        }
     }
 
     @Override
@@ -163,6 +131,40 @@ public abstract class AbstractNumberField<T> extends CustomField<T> implements
                 tf.setWidth(null);
             }
         }
+    }
+
+    @Override
+    public Registration addBlurListener(BlurListener listener) {
+        return tf.addBlurListener(listener);
+    }
+
+    @Override
+    public Registration addFocusListener(FocusListener listener) {
+        return tf.addFocusListener(listener);
+    }
+
+    /**
+     * Adds a BlurListener to the Component which gets fired when a Field loses
+     * keyboard focus, returning this instance in a fluent fashion.
+     *
+     * @param listener the listener to be added
+     * @return this instance
+     */
+    public AbstractNumberField<S, T> withBlurListener(BlurListener listener) {
+        addBlurListener(listener);
+        return this;
+    }
+
+    /**
+     * Adds a FocusListener to the Component which gets fired when a Field
+     * receives keyboard focus, returning this instance in a fluent fashion.
+     *
+     * @param listener the listener to be added
+     * @return this instance
+     */
+    public AbstractNumberField<S, T> withFocusListener(FocusListener listener) {
+        addFocusListener(listener);
+        return this;
     }
 
 }
