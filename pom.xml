@@ -36,13 +36,18 @@
         <system>GitHub</system>
         <url>https://github.com/viritin/viritin/issues</url>
     </issueManagement>
-    
+
     <distributionManagement>
         <repository>
-            <id>v4</id>
-            <url>sftp://virit.in/home/dev/maven2/</url>
+            <id>nexus.wcs.local</id>
+            <url>http://nexus.wcs.local:8081/nexus/content/repositories/releases</url>
         </repository>
+        <snapshotRepository>
+            <id>nexus.wcs.local</id>
+            <url>http://nexus.wcs.local:8081/nexus/content/repositories/snapshots</url>
+        </snapshotRepository>
     </distributionManagement>
+
 
     <licenses>
         <license>
